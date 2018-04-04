@@ -1,0 +1,66 @@
+import os
+import win32com.client
+import re
+import pprint
+
+
+def pretty_print(o):
+    pp = pprint.PrettyPrinter(indent=4)
+    pp.pprint(o)
+
+ROOT = r'E:\Projects\Yandi PCN Remediation\31. Drawings\Master Pack\Visios\Cores'
+
+
+vsd = win32com.client.Dispatch('Visio.Application')
+vsd.Visible = True
+doc = vsd.Documents.Open(os.path.join(ROOT, '660-E-12092_1A - NS500-2 Slot 6.vsd'))
+doc_page = doc.Pages("Page-1")
+
+
+data = """
+PL1|Gi2/6/1|A0025-PL2|NS801|Gi2/1/1
+PL2|Gi2/6/2|A0025-PL13|NS802|Gi2/1/1
+PL3|Gi2/6/3|A0026-PL7|NS804|Gi2/1/1
+PL4|Gi2/6/4|A0026-PL18|NS805|Gi2/1/1
+PL5|Gi2/6/5|A0026-PL8|NS806|Gi2/1/1
+PL6|Gi2/6/6|A0057-PL1|NS807|Gi2/1/1
+PL7|Gi2/6/7|A0025-PL3|NS808|Gi2/1/1
+PL8|Gi2/6/8|A0025-PL15|NS809|Gi2/1/1
+PL9|Gi2/6/9|A0026-PL15|NS811|Gi1/1/2
+PL10|Gi2/6/10|A0026-PL9|NS810|Gi1/1/2
+PL11|Gi2/6/11|A0025-PL1|NSEPCMCOMMS|Gi1/1/1
+PL12|Gi2/6/12|A0026-PL5|Y3RO_YANDI|Gi1/1/1
+PL13|Gi2/6/13|.|NS818|Gi1/1/1
+PL14|Gi2/6/14|.|NS821|Gi1/1/2
+PL15|Gi2/6/15|A0025-PL10|NS820|Gi2/1/1
+PL16|Gi2/6/16|.|NS552|Gi1/1
+PL22|Gi2/6/22|.|NS850|Gi1/1/2
+PL23|Gi2/6/23|.|bioyanso3abo1|Gi1/0/5
+""".splitlines()
+
+data = {k: v for k, v in [[x.split('|')[0], x.split('|')[1:]] for x in data if len(x) > 0]}
+
+pretty_print(data)
+
+
+for _pl, rest in data.iteritems():
+    for idx in range(1, doc_page.Shapes.Count+1):
+        shp = doc_page.Shapes(idx)
+        m1 = re.search(r'Interconnect Info\.(.*)', shp.Name, re.IGNORECASE)
+        if m1:
+            pl = str(m1.group(1))
+            if pl == _pl:
+                if rest[1] == ".":
+                    shp.Text = "{} {}".format(rest[2], rest[3])
+                else:
+                    patch_lead = rest[1]
+                    fobot = patch_lead[:patch_lead.find("-")]
+                    shp.Text = "{} {}\nVIA FOBOT\n{}".format(rest[2], rest[3], fobot)
+        m2 = re.search(r'LabelRef\.(.*)', shp.Name, re.IGNORECASE)
+        if m2:
+            pl = str(m2.group(1))
+            if pl == _pl:
+                shp.Text = rest[1]
+        m3 = re.search(r'Fibre Type', shp.Name, re.IGNORECASE)
+        if m3:
+            shp.Text = "SM/SCA\nLC/2"           
